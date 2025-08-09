@@ -1,3 +1,4 @@
+import sys
 import os
 from dotenv import load_dotenv
 from google import genai
@@ -7,7 +8,11 @@ api_key = os.environ.get("GEMINI_API_KEY")
 
 client = genai.Client(api_key=api_key)
 
-content = "Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum."
+if len(sys.argv) > 1:
+    content = sys.argv[1]
+else:
+    print("Error 1")
+    sys.exit(1)
 GenerateContentResponse = client.models.generate_content(model="gemini-2.0-flash", contents=content)
 print(GenerateContentResponse.text)
 print(f"Prompt tokens: {GenerateContentResponse.usage_metadata.prompt_token_count}")

@@ -5,10 +5,7 @@ from google import genai
 from google.genai import types
 
 from system_prompt import system_prompt
-from functions.get_files_info import schema_get_files_info
-from functions.get_file_content import schema_get_file_content
-from functions.run_python import schema_run_python_file
-from functions.write_file import schema_write_file
+from call_function import available_functions, call_function
 
 def main():
     load_dotenv()
@@ -21,17 +18,6 @@ def main():
     else:
         print("Error 1")
         sys.exit(1)
-
-    available_functions = types.Tool(
-        function_declarations=[
-            schema_get_files_info,
-            schema_get_file_content,
-            schema_run_python_file,
-            schema_write_file
-        ]
-    )
-    
-    
 
     messages = [types.Content(role="user", parts=[types.Part(text=user_prompt)]),]
 
@@ -46,17 +32,31 @@ def main():
     )
     
     if len(sys.argv) == 3 and sys.argv[2] == "--verbose":
-        check_function_calls(GenerateContentResponse)
+        check_function_calls(GenerateContentResponse, True)
         print(f"User prompt: {user_prompt}")
         print(f"Prompt tokens: {GenerateContentResponse.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {GenerateContentResponse.usage_metadata.candidates_token_count}")
     else:
         check_function_calls(GenerateContentResponse)
 
-def check_function_calls(GenerateContentResponse):
+def check_function_calls(GenerateContentResponse, verbose=False):
     if GenerateContentResponse.function_calls is not None:
         for call in GenerateContentResponse.function_calls:
-            print(f"Calling function: {call.name}({call.args})")   
+            try:
+                result = call_function(call, verbose)
+                if (result.parts 
+                    and len(result.parts) > 0 
+                    and hasattr(result.parts[0], "function_response") 
+                    and hasattr(result.parts[0].function_response, "response")
+                    ):
+
+                    if verbose:
+                        print(f"-> {result.parts[0].function_response.response}")
+                    else:
+                        raise Exception("Function call result did not contain expected function_response")
+            except Exception as e:
+                raise e
+            
     else:
         print(GenerateContentResponse.text)
 
